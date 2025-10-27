@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
-import { supabase, Artifact } from '../lib/supabase';
+import { Artifact } from '../lib/supabase';
 import { Shield, Filter } from 'lucide-react';
 
 const PIECE_TYPES = ['Flower', 'Feather', 'Sands', 'Goblet', 'Circlet'];
 
 export default function ArtifactWiki() {
-  const [artifacts, setArtifacts] = useState<Artifact[]>([]);
+  // artifacts list not needed once grouped; keep only groupedArtifacts
   const [loading, setLoading] = useState(true);
   const [selectedPiece, setSelectedPiece] = useState<string>('');
   const [groupedArtifacts, setGroupedArtifacts] = useState<Record<string, Artifact[]>>({});
+  const [showFilters, setShowFilters] = useState(true);
 
   useEffect(() => {
     fetchArtifacts();
@@ -16,16 +17,12 @@ export default function ArtifactWiki() {
 
   async function fetchArtifacts() {
     setLoading(true);
-    let query = supabase.from('artifacts').select('*').order('set_name');
-
-    if (selectedPiece) {
-      query = query.eq('piece_type', selectedPiece);
-    }
-
-    const { data, error } = await query;
-    if (!error && data) {
-      setArtifacts(data);
-      const grouped = data.reduce((acc, artifact) => {
+    const params = new URLSearchParams();
+    if (selectedPiece) params.set('piece_type', selectedPiece);
+    const res = await fetch(`/api/artifacts?${params.toString()}`);
+    if (res.ok) {
+      const data = await res.json() as Artifact[];
+      const grouped = data.reduce((acc: Record<string, Artifact[]>, artifact: Artifact) => {
         if (!acc[artifact.set_name]) {
           acc[artifact.set_name] = [];
         }
@@ -33,6 +30,8 @@ export default function ArtifactWiki() {
         return acc;
       }, {} as Record<string, Artifact[]>);
       setGroupedArtifacts(grouped);
+    } else {
+      console.error('Failed to fetch artifacts', await res.text());
     }
     setLoading(false);
   }
@@ -44,34 +43,43 @@ export default function ArtifactWiki() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
       <div className="max-w-7xl mx-auto">
-        <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 mb-6 shadow-2xl border border-slate-700">
-          <div className="flex items-center justify-between mb-4">
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-2">
             <div className="flex items-center space-x-2">
               <Filter className="text-amber-400" size={24} />
               <h2 className="text-xl font-bold text-white">Filters</h2>
             </div>
-            <button
-              onClick={clearFilters}
-              className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
-            >
-              Clear All
-            </button>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setShowFilters((s) => !s)}
+                className="md:hidden px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
+              >
+                {showFilters ? 'Hide Filters' : 'Show Filters'}
+              </button>
+              <button
+                onClick={clearFilters}
+                className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
+              >
+                Clear All
+              </button>
+            </div>
           </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">Piece Type</label>
-            <select
-              value={selectedPiece}
-              onChange={(e) => setSelectedPiece(e.target.value)}
-              className="w-full md:w-1/3 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-            >
-              <option value="">All Pieces</option>
-              {PIECE_TYPES.map((piece) => (
-                <option key={piece} value={piece}>
-                  {piece}
-                </option>
-              ))}
-            </select>
+          <div className={`${showFilters ? 'block' : 'hidden'} md:block bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 shadow-2xl border border-slate-700`}>
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">Piece Type</label>
+              <select
+                value={selectedPiece}
+                onChange={(e) => setSelectedPiece(e.target.value)}
+                className="w-full md:w-1/3 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+              >
+                <option value="">All Pieces</option>
+                {PIECE_TYPES.map((piece) => (
+                  <option key={piece} value={piece}>
+                    {piece}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
 

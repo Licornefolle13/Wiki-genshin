@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import { supabase, Character } from '../lib/supabase';
+import { Character } from '../lib/supabase';
 import { Filter, Star } from 'lucide-react';
 
 const ELEMENTS = ['Pyro', 'Hydro', 'Anemo', 'Electro', 'Dendro', 'Cryo', 'Geo'];
 const WEAPON_TYPES = ['Sword', 'Claymore', 'Polearm', 'Bow', 'Catalyst'];
-const REGIONS = ['Mondstadt', 'Liyue', 'Inazuma', 'Sumeru', 'Fontaine', 'Natlan', 'Snezhnaya'];
+const REGIONS = ['Mondstadt', 'Liyue', 'Inazuma', 'Sumeru', 'Fontaine', 'Natlan', 'Snezhnaya', 'Nod-Krai', 'Unknown'];
 
 const ELEMENT_COLORS: Record<string, string> = {
   Pyro: 'from-red-500 to-orange-500',
@@ -23,6 +23,7 @@ export default function CharacterWiki() {
   const [selectedWeapon, setSelectedWeapon] = useState<string>('');
   const [selectedRegion, setSelectedRegion] = useState<string>('');
   const [selectedRarity, setSelectedRarity] = useState<number | null>(null);
+  const [showFilters, setShowFilters] = useState(true);
 
   useEffect(() => {
     fetchCharacters();
@@ -30,24 +31,17 @@ export default function CharacterWiki() {
 
   async function fetchCharacters() {
     setLoading(true);
-    let query = supabase.from('characters').select('*').order('name');
-
-    if (selectedElement) {
-      query = query.eq('element', selectedElement);
-    }
-    if (selectedWeapon) {
-      query = query.eq('weapon_type', selectedWeapon);
-    }
-    if (selectedRegion) {
-      query = query.eq('region', selectedRegion);
-    }
-    if (selectedRarity) {
-      query = query.eq('rarity', selectedRarity);
-    }
-
-    const { data, error } = await query;
-    if (!error && data) {
-      setCharacters(data);
+    const params = new URLSearchParams();
+    if (selectedElement) params.set('element', selectedElement);
+    if (selectedWeapon) params.set('weapon_type', selectedWeapon);
+    if (selectedRegion) params.set('region', selectedRegion);
+    if (selectedRarity) params.set('rarity', String(selectedRarity));
+    const res = await fetch(`/api/characters?${params.toString()}`);
+    if (res.ok) {
+      const data = await res.json();
+      setCharacters(data as Character[]);
+    } else {
+      console.error('Failed to fetch characters', await res.text());
     }
     setLoading(false);
   }
@@ -62,80 +56,89 @@ export default function CharacterWiki() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
       <div className="max-w-7xl mx-auto">
-        <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 mb-6 shadow-2xl border border-slate-700">
-          <div className="flex items-center justify-between mb-4">
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-2">
             <div className="flex items-center space-x-2">
               <Filter className="text-amber-400" size={24} />
               <h2 className="text-xl font-bold text-white">Filters</h2>
             </div>
-            <button
-              onClick={clearFilters}
-              className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
-            >
-              Clear All
-            </button>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setShowFilters((s) => !s)}
+                className="md:hidden px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
+              >
+                {showFilters ? 'Hide Filters' : 'Show Filters'}
+              </button>
+              <button
+                onClick={clearFilters}
+                className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
+              >
+                Clear All
+              </button>
+            </div>
           </div>
+          <div className={`${showFilters ? 'block' : 'hidden'} md:block bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 shadow-2xl border border-slate-700`}>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Element</label>
+                <select
+                  value={selectedElement}
+                  onChange={(e) => setSelectedElement(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                >
+                  <option value="">All Elements</option>
+                  {ELEMENTS.map((elem) => (
+                    <option key={elem} value={elem}>
+                      {elem}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">Element</label>
-              <select
-                value={selectedElement}
-                onChange={(e) => setSelectedElement(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-              >
-                <option value="">All Elements</option>
-                {ELEMENTS.map((elem) => (
-                  <option key={elem} value={elem}>
-                    {elem}
-                  </option>
-                ))}
-              </select>
-            </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Weapon</label>
+                <select
+                  value={selectedWeapon}
+                  onChange={(e) => setSelectedWeapon(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                >
+                  <option value="">All Weapons</option>
+                  {WEAPON_TYPES.map((weapon) => (
+                    <option key={weapon} value={weapon}>
+                      {weapon}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">Weapon</label>
-              <select
-                value={selectedWeapon}
-                onChange={(e) => setSelectedWeapon(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-              >
-                <option value="">All Weapons</option>
-                {WEAPON_TYPES.map((weapon) => (
-                  <option key={weapon} value={weapon}>
-                    {weapon}
-                  </option>
-                ))}
-              </select>
-            </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Region</label>
+                <select
+                  value={selectedRegion}
+                  onChange={(e) => setSelectedRegion(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                >
+                  <option value="">All Regions</option>
+                  {REGIONS.map((region) => (
+                    <option key={region} value={region}>
+                      {region}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">Region</label>
-              <select
-                value={selectedRegion}
-                onChange={(e) => setSelectedRegion(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-              >
-                <option value="">All Regions</option>
-                {REGIONS.map((region) => (
-                  <option key={region} value={region}>
-                    {region}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">Rarity</label>
-              <select
-                value={selectedRarity || ''}
-                onChange={(e) => setSelectedRarity(e.target.value ? Number(e.target.value) : null)}
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-              >
-                <option value="">All Rarities</option>
-                <option value="4">4 Star</option>
-                <option value="5">5 Star</option>
-              </select>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Rarity</label>
+                <select
+                  value={selectedRarity || ''}
+                  onChange={(e) => setSelectedRarity(e.target.value ? Number(e.target.value) : null)}
+                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                >
+                  <option value="">All Rarities</option>
+                  <option value="4">4 Star</option>
+                  <option value="5">5 Star</option>
+                </select>
+              </div>
             </div>
           </div>
         </div>

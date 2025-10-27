@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase, MapMarker } from '../lib/supabase';
+import { MapMarker } from '../lib/supabase';
 import { MapPin, Filter, Eye, EyeOff } from 'lucide-react';
 
 const CATEGORIES = [
@@ -21,6 +21,7 @@ export default function InteractiveMap() {
   const [visibleCategories, setVisibleCategories] = useState<Set<string>>(
     new Set(CATEGORIES.map((c) => c.id))
   );
+  const [showFilters, setShowFilters] = useState(true);
   const [hoveredMarker, setHoveredMarker] = useState<string | null>(null);
 
   useEffect(() => {
@@ -29,18 +30,15 @@ export default function InteractiveMap() {
 
   async function fetchMarkers() {
     setLoading(true);
-    let query = supabase.from('map_markers').select('*');
-
-    if (selectedCategory) {
-      query = query.eq('category', selectedCategory);
-    }
-    if (selectedRegion) {
-      query = query.eq('region', selectedRegion);
-    }
-
-    const { data, error } = await query;
-    if (!error && data) {
-      setMarkers(data);
+    const params = new URLSearchParams();
+    if (selectedCategory) params.set('category', selectedCategory);
+    if (selectedRegion) params.set('region', selectedRegion);
+    const res = await fetch(`/api/map_markers?${params.toString()}`);
+    if (res.ok) {
+      const data = await res.json();
+      setMarkers(data as MapMarker[]);
+    } else {
+      console.error('Failed to fetch map markers', await res.text());
     }
     setLoading(false);
   }
@@ -68,12 +66,18 @@ export default function InteractiveMap() {
       <div className="max-w-7xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           <div className="lg:col-span-1 space-y-4">
-            <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 shadow-2xl border border-slate-700">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center space-x-2">
-                  <Filter className="text-amber-400" size={20} />
-                  <h2 className="text-lg font-bold text-white">Filters</h2>
-                </div>
+            <div className="mb-2 flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Filter className="text-amber-400" size={20} />
+                <h2 className="text-lg font-bold text-white">Filters</h2>
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setShowFilters((s) => !s)}
+                  className="md:hidden px-3 py-1 text-sm bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
+                >
+                  {showFilters ? 'Hide' : 'Show'}
+                </button>
                 <button
                   onClick={clearFilters}
                   className="px-3 py-1 text-sm bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
@@ -81,7 +85,9 @@ export default function InteractiveMap() {
                   Clear
                 </button>
               </div>
+            </div>
 
+            <div className={`${showFilters ? 'block' : 'hidden'} md:block bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 shadow-2xl border border-slate-700`}>
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-300 mb-2">Region</label>
@@ -106,11 +112,10 @@ export default function InteractiveMap() {
                       <button
                         key={category.id}
                         onClick={() => toggleCategory(category.id)}
-                        className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all ${
-                          visibleCategories.has(category.id)
-                            ? 'bg-slate-700 border border-slate-600'
-                            : 'bg-slate-800 border border-slate-700 opacity-50'
-                        }`}
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all ${visibleCategories.has(category.id)
+                          ? 'bg-slate-700 border border-slate-600'
+                          : 'bg-slate-800 border border-slate-700 opacity-50'
+                          }`}
                       >
                         <div className="flex items-center space-x-2">
                           <div className={`w-3 h-3 rounded-full ${category.color}`}></div>
@@ -167,8 +172,8 @@ export default function InteractiveMap() {
                     <div className="relative w-full h-full bg-slate-800/30 rounded-lg border-2 border-slate-600 overflow-hidden">
                       {filteredMarkers.map((marker) => {
                         const category = CATEGORIES.find((c) => c.id === marker.category);
-                        const x = (marker.longitude + 180) / 360;
-                        const y = (90 - marker.latitude) / 180;
+                        const x = (marker.lng + 180) / 360;
+                        const y = (90 - marker.lat) / 180;
 
                         return (
                           <div
