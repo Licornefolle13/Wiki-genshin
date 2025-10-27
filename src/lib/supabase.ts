@@ -1,9 +1,11 @@
-import { createClient } from '@supabase/supabase-js';
+// Supabase was removed. This file now only exports the shared TypeScript interfaces
+// used across the app and a runtime stub to help catch accidental uses.
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = {
+  from: () => {
+    throw new Error('Supabase client was removed. Use the backend /api endpoints instead.');
+  },
+} as unknown;
 
 export interface Character {
   id: string;
@@ -20,7 +22,7 @@ export interface Character {
 export interface Weapon {
   id: string;
   name: string;
-  type: string;
+  weapon_type: string;
   rarity: number;
   base_attack: number;
   secondary_stat: string;
@@ -45,8 +47,9 @@ export interface MapMarker {
   name: string;
   category: string;
   region: string;
-  latitude: number;
-  longitude: number;
+  // backend returns lat and lng
+  lat: number;
+  lng: number;
   description: string;
   icon_type: string;
   created_at: string;

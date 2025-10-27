@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase, Weapon } from '../lib/supabase';
+import { Weapon } from '../lib/supabase';
 import { Sword, Filter, Star } from 'lucide-react';
 
 const WEAPON_TYPES = ['Sword', 'Claymore', 'Polearm', 'Bow', 'Catalyst'];
@@ -17,6 +17,7 @@ export default function WeaponWiki() {
   const [loading, setLoading] = useState(true);
   const [selectedType, setSelectedType] = useState<string>('');
   const [selectedRarity, setSelectedRarity] = useState<number | null>(null);
+  const [showFilters, setShowFilters] = useState(true);
 
   useEffect(() => {
     fetchWeapons();
@@ -24,18 +25,15 @@ export default function WeaponWiki() {
 
   async function fetchWeapons() {
     setLoading(true);
-    let query = supabase.from('weapons').select('*').order('rarity', { ascending: false }).order('name');
-
-    if (selectedType) {
-      query = query.eq('type', selectedType);
-    }
-    if (selectedRarity) {
-      query = query.eq('rarity', selectedRarity);
-    }
-
-    const { data, error } = await query;
-    if (!error && data) {
-      setWeapons(data);
+    const params = new URLSearchParams();
+    if (selectedType) params.set('weapon_type', selectedType);
+    if (selectedRarity) params.set('rarity', String(selectedRarity));
+    const res = await fetch(`/api/weapons?${params.toString()}`);
+    if (res.ok) {
+      const data = await res.json();
+      setWeapons(data as Weapon[]);
+    } else {
+      console.error('Failed to fetch weapons', await res.text());
     }
     setLoading(false);
   }
@@ -48,49 +46,58 @@ export default function WeaponWiki() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
       <div className="max-w-7xl mx-auto">
-        <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 mb-6 shadow-2xl border border-slate-700">
-          <div className="flex items-center justify-between mb-4">
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-2">
             <div className="flex items-center space-x-2">
               <Filter className="text-amber-400" size={24} />
               <h2 className="text-xl font-bold text-white">Filters</h2>
             </div>
-            <button
-              onClick={clearFilters}
-              className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
-            >
-              Clear All
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">Weapon Type</label>
-              <select
-                value={selectedType}
-                onChange={(e) => setSelectedType(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setShowFilters((s) => !s)}
+                className="md:hidden px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
               >
-                <option value="">All Types</option>
-                {WEAPON_TYPES.map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
-              </select>
+                {showFilters ? 'Hide Filters' : 'Show Filters'}
+              </button>
+              <button
+                onClick={clearFilters}
+                className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
+              >
+                Clear All
+              </button>
             </div>
+          </div>
+          <div className={`${showFilters ? 'block' : 'hidden'} md:block bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 shadow-2xl border border-slate-700`}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Weapon Type</label>
+                <select
+                  value={selectedType}
+                  onChange={(e) => setSelectedType(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                >
+                  <option value="">All Types</option>
+                  {WEAPON_TYPES.map((type) => (
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">Rarity</label>
-              <select
-                value={selectedRarity || ''}
-                onChange={(e) => setSelectedRarity(e.target.value ? Number(e.target.value) : null)}
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-              >
-                <option value="">All Rarities</option>
-                <option value="3">3 Star</option>
-                <option value="4">4 Star</option>
-                <option value="5">5 Star</option>
-              </select>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Rarity</label>
+                <select
+                  value={selectedRarity || ''}
+                  onChange={(e) => setSelectedRarity(e.target.value ? Number(e.target.value) : null)}
+                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                >
+                  <option value="">All Rarities</option>
+                  <option value="3">3 Star</option>
+                  <option value="4">4 Star</option>
+                  <option value="5">5 Star</option>
+                </select>
+              </div>
             </div>
           </div>
         </div>
@@ -111,7 +118,7 @@ export default function WeaponWiki() {
                 key={weapon.id}
                 className="group bg-slate-800/80 backdrop-blur-sm rounded-xl overflow-hidden shadow-lg border border-slate-700 hover:border-amber-500 transition-all duration-300 hover:shadow-2xl hover:shadow-amber-500/20 hover:-translate-y-1"
               >
-                <div className={`h-48 bg-gradient-to-br ${TYPE_COLORS[weapon.type] || 'from-slate-600 to-slate-700'} flex items-center justify-center relative overflow-hidden`}>
+                <div className={`h-48 bg-gradient-to-br ${TYPE_COLORS[weapon.weapon_type] || 'from-slate-600 to-slate-700'} flex items-center justify-center relative overflow-hidden`}>
                   {weapon.image_url ? (
                     <img src={weapon.image_url} alt={weapon.name} className="h-full w-full object-cover" />
                   ) : (
@@ -127,7 +134,7 @@ export default function WeaponWiki() {
                   <h3 className="text-xl font-bold text-white mb-2">{weapon.name}</h3>
                   <div className="space-y-1 text-sm">
                     <p className="text-slate-300">
-                      <span className="font-medium text-amber-400">Type:</span> {weapon.type}
+                      <span className="font-medium text-amber-400">Type:</span> {weapon.weapon_type}
                     </p>
                     <p className="text-slate-300">
                       <span className="font-medium text-amber-400">Base ATK:</span> {weapon.base_attack}
