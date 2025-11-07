@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs').promises;
 const cors = require('cors');
 const dotenv = require('dotenv');
+const path = require('path');
 
 dotenv.config();
 
@@ -52,6 +53,10 @@ app.get('/genshin/images.json', async (req, res, next) => {
 // middleware
 const { requestLogger, errorLogger } = require('./middleware/logger');
 app.use(requestLogger);
+
+// serve static images from genshin folder
+const imagesPath = process.env.IMAGES_PATH || path.join(__dirname, '..', 'genshin');
+app.use('/images', express.static(imagesPath));
 
 // routes
 app.use('/api', require('./routes'));
