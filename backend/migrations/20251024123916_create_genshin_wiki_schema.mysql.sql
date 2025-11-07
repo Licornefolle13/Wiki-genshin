@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS `characters` (
   `deleted_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP;
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Weapons table (rename column `type` -> `weapon_type` to match app)
+
 CREATE TABLE IF NOT EXISTS `weapons` (
   `id` CHAR(36) NOT NULL PRIMARY KEY DEFAULT (UUID()),
   `name` VARCHAR(255) NOT NULL UNIQUE,
@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS `weapons` (
   `deleted_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Artifacts table (added `rarity` column to match backend queries)
+
 CREATE TABLE IF NOT EXISTS `artifacts` (
   `id` CHAR(36) NOT NULL PRIMARY KEY DEFAULT (UUID()),
   `set_name` VARCHAR(255) NOT NULL,

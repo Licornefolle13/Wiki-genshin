@@ -29,6 +29,7 @@ export default function CharacterWiki() {
     fetchCharacters();
   }, [selectedElement, selectedWeapon, selectedRegion, selectedRarity]);
 
+
   async function fetchCharacters() {
     setLoading(true);
     const params = new URLSearchParams();
@@ -52,6 +53,21 @@ export default function CharacterWiki() {
     setSelectedRegion('');
     setSelectedRarity(null);
   };
+
+  // selectedCharacter modal shown when a card is clicked
+  const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSelectedCharacter(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  // sanitization helper removed; using image_url only for now
+
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
@@ -157,11 +173,21 @@ export default function CharacterWiki() {
             {characters.map((character) => (
               <div
                 key={character.id}
-                className="group bg-slate-800/80 backdrop-blur-sm rounded-xl overflow-hidden shadow-lg border border-slate-700 hover:border-amber-500 transition-all duration-300 hover:shadow-2xl hover:shadow-amber-500/20 hover:-translate-y-1"
+                role="button"
+                tabIndex={0}
+                onClick={() => setSelectedCharacter(character)}
+                onKeyDown={(e) => { if (e.key === 'Enter') setSelectedCharacter(character); }}
+                className="group bg-slate-800/80 backdrop-blur-sm rounded-xl overflow-hidden shadow-lg border border-slate-700 hover:border-amber-500 transition-all duration-300 hover:shadow-2xl hover:shadow-amber-500/20 hover:-translate-y-1 cursor-pointer flex flex-col h-full"
               >
-                <div className={`h-48 bg-gradient-to-br ${ELEMENT_COLORS[character.element] || 'from-slate-600 to-slate-700'} flex items-center justify-center relative overflow-hidden`}>
+                <div className={`h-90 md:h-80 bg-gradient-to-br ${ELEMENT_COLORS[character.element] || 'from-slate-600 to-slate-700'} flex items-center justify-center relative overflow-hidden`}>
                   {character.image_url ? (
-                    <img src={character.image_url} alt={character.name} className="h-full w-full object-cover" />
+                    <img
+                      src={character.image_url}
+                      alt={character.name}
+                      loading="lazy"
+                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                      className="w-full h-full object-contain object-center border-0 bg-transparent"
+                    />
                   ) : (
                     <div className="text-6xl font-bold text-white/20">{character.name[0]}</div>
                   )}
@@ -171,7 +197,7 @@ export default function CharacterWiki() {
                     ))}
                   </div>
                 </div>
-                <div className="p-4">
+                <div className="p-4 flex flex-col flex-1">
                   <h3 className="text-xl font-bold text-white mb-2">{character.name}</h3>
                   <div className="space-y-1 text-sm">
                     <p className="text-slate-300">
@@ -185,11 +211,74 @@ export default function CharacterWiki() {
                     </p>
                   </div>
                   {character.description && (
-                    <p className="mt-3 text-slate-400 text-sm line-clamp-3">{character.description}</p>
+                    <p className="mt-auto text-slate-400 text-sm line-clamp-3">{character.description}</p>
                   )}
                 </div>
               </div>
             ))}
+          </div>
+        )}
+        {/* Detail modal for selected character - responsive two-column: details left, image right on md+ */}
+        {selectedCharacter && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Character details for ${selectedCharacter.name}`}
+            onClick={() => setSelectedCharacter(null)}
+          >
+            <div
+              className="max-w-4xl w-full mx-4 bg-slate-900 rounded-xl overflow-hidden shadow-2xl border border-slate-700"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setSelectedCharacter(null)}
+                className="absolute top-4 right-4 bg-slate-800/60 hover:bg-slate-700 text-white rounded-full p-2 z-20"
+                aria-label="Close details"
+              >
+                ✕
+              </button>
+
+              <div className="md:flex md:items-stretch">
+                {/* Left: details */}
+                <div className="md:w-1/2 p-6 flex flex-col justify-start">
+                  <h3 className="text-2xl font-bold text-white mb-2">{selectedCharacter.name}</h3>
+                  <div className="flex items-center gap-4 mb-4">
+                    <span className="text-slate-300">{selectedCharacter.element}</span>
+                    <span className="text-slate-300">•</span>
+                    <span className="text-slate-300">{selectedCharacter.weapon_type}</span>
+                    <span className="text-slate-300">•</span>
+                    <span className="text-slate-300">{selectedCharacter.region}</span>
+                    <div className="ml-auto flex items-center">
+                      {Array.from({ length: selectedCharacter.rarity }).map((_, i) => (
+                        <Star key={i} size={18} className="fill-amber-400 text-amber-400" />
+                      ))}
+                    </div>
+                  </div>
+                  {selectedCharacter.description ? (
+                    <p className="text-slate-300 leading-relaxed">{selectedCharacter.description}</p>
+                  ) : (
+                    <p className="text-slate-400">No description available.</p>
+                  )}
+                </div>
+
+                {/* Right: image */}
+                <div className={`md:w-1/2 bg-gradient-to-br ${ELEMENT_COLORS[selectedCharacter.element] || 'from-slate-600 to-slate-700'} flex items-center justify-center p-6`}>
+                  {selectedCharacter.image_url ? (
+                    <img
+                      src={selectedCharacter.image_url}
+                      alt={selectedCharacter.name}
+                      loading="lazy"
+                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                      // fill the panel width while preserving aspect ratio
+                      className="w-full h-auto max-h-[80vh] object-contain object-center"
+                    />
+                  ) : (
+                    <div className="text-8xl font-bold text-white/20">{selectedCharacter.name[0]}</div>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>
