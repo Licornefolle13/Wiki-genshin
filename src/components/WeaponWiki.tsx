@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
-import { Weapon } from '../lib/supabase';
+import { useState } from 'react';
+import type { Weapon } from '../types';
+import useApiList from '../hooks/useApiList';
 import { Sword, Filter, Star } from 'lucide-react';
 
 const WEAPON_TYPES = ['Sword', 'Claymore', 'Polearm', 'Bow', 'Catalyst'];
@@ -13,30 +14,20 @@ const TYPE_COLORS: Record<string, string> = {
 };
 
 export default function WeaponWiki() {
-  const [weapons, setWeapons] = useState<Weapon[]>([]);
-  const [loading, setLoading] = useState(true);
+
   const [selectedType, setSelectedType] = useState<string>('');
   const [selectedRarity, setSelectedRarity] = useState<number | null>(null);
   const [showFilters, setShowFilters] = useState(true);
 
-  useEffect(() => {
-    fetchWeapons();
-  }, [selectedType, selectedRarity]);
-
-  async function fetchWeapons() {
-    setLoading(true);
-    const params = new URLSearchParams();
-    if (selectedType) params.set('weapon_type', selectedType);
-    if (selectedRarity) params.set('rarity', String(selectedRarity));
-    const res = await fetch(`/api/weapons?${params.toString()}`);
-    if (res.ok) {
-      const data = await res.json();
-      setWeapons(data as Weapon[]);
-    } else {
-      console.error('Failed to fetch weapons', await res.text());
-    }
-    setLoading(false);
-  }
+  const { data, loading } = useApiList<Weapon>(
+    '/api/weapons',
+    [selectedType, selectedRarity],
+    () => ({
+      weapon_type: selectedType || undefined,
+      rarity: selectedRarity != null ? String(selectedRarity) : undefined,
+    })
+  );
+  const weapons = data ?? [];
 
   const clearFilters = () => {
     setSelectedType('');

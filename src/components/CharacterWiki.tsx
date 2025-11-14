@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Character } from '../lib/supabase';
+import type { Character } from '../types';
+import useApiList from '../hooks/useApiList';
 import { Filter, Star } from 'lucide-react';
 
 const ELEMENTS = ['Pyro', 'Hydro', 'Anemo', 'Electro', 'Dendro', 'Cryo', 'Geo'];
@@ -17,35 +18,28 @@ const ELEMENT_COLORS: Record<string, string> = {
 };
 
 export default function CharacterWiki() {
-  const [characters, setCharacters] = useState<Character[]>([]);
-  const [loading, setLoading] = useState(true);
+  // data hook will be initialized after filter state declarations below
   const [selectedElement, setSelectedElement] = useState<string>('');
   const [selectedWeapon, setSelectedWeapon] = useState<string>('');
   const [selectedRegion, setSelectedRegion] = useState<string>('');
   const [selectedRarity, setSelectedRarity] = useState<number | null>(null);
   const [showFilters, setShowFilters] = useState(true);
 
-  useEffect(() => {
-    fetchCharacters();
-  }, [selectedElement, selectedWeapon, selectedRegion, selectedRarity]);
+  const { data, loading } = useApiList<Character>(
+    '/api/characters',
+    [selectedElement, selectedWeapon, selectedRegion, selectedRarity],
+    () => ({
+      element: selectedElement || undefined,
+      weapon_type: selectedWeapon || undefined,
+      region: selectedRegion || undefined,
+      rarity: selectedRarity != null ? String(selectedRarity) : undefined,
+    })
+  );
+  const characters = data ?? [];
 
-
-  async function fetchCharacters() {
-    setLoading(true);
-    const params = new URLSearchParams();
-    if (selectedElement) params.set('element', selectedElement);
-    if (selectedWeapon) params.set('weapon_type', selectedWeapon);
-    if (selectedRegion) params.set('region', selectedRegion);
-    if (selectedRarity) params.set('rarity', String(selectedRarity));
-    const res = await fetch(`/api/characters?${params.toString()}`);
-    if (res.ok) {
-      const data = await res.json();
-      setCharacters(data as Character[]);
-    } else {
-      console.error('Failed to fetch characters', await res.text());
-    }
-    setLoading(false);
-  }
+  // Data comes from useApiList; it automatically refreshes when the
+  // dependency array [selectedElement, selectedWeapon, selectedRegion, selectedRarity]
+  // changes.
 
   const clearFilters = () => {
     setSelectedElement('');

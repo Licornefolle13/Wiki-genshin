@@ -22,12 +22,12 @@ exports.list = async (req, res, next) => {
 
       // If image is already an absolute URL or a static path served by the backend (/genshin/...), leave it
       if (typeof image === 'string' && image.length > 0) {
-        if (image.startsWith('http://') || image.startsWith('https://') || image.startsWith('/genshin/') || image.startsWith('/')) {
+        if (image.startsWith('http://') || image.startsWith('https://') || image.startsWith('/genshin/') || image.startsWith('/images/characters/') || image.startsWith('/')) {
           image_url = image;
         } else {
           // Extract filename and build the served path
           const filename = path.basename(image.replace(/\\\\/g, '/'));
-          image_url = `/genshin/${filename}`;
+          image_url = `/images/characters/${filename}`;
         }
       } else {
         image_url = null;

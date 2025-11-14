@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
-import { MapMarker } from '../lib/supabase';
+import { useState } from 'react';
+import type { MapMarker } from '../types';
+import useApiList from '../hooks/useApiList';
 import { MapPin, Filter, Eye, EyeOff } from 'lucide-react';
 
 const CATEGORIES = [
@@ -14,8 +15,7 @@ const CATEGORIES = [
 const REGIONS = ['Mondstadt', 'Liyue', 'Inazuma', 'Sumeru', 'Fontaine', 'Natlan'];
 
 export default function InteractiveMap() {
-  const [markers, setMarkers] = useState<MapMarker[]>([]);
-  const [loading, setLoading] = useState(true);
+  // markers are provided by useApiList and will be initialized after filter state variables
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [selectedRegion, setSelectedRegion] = useState<string>('');
   const [visibleCategories, setVisibleCategories] = useState<Set<string>>(
@@ -24,24 +24,17 @@ export default function InteractiveMap() {
   const [showFilters, setShowFilters] = useState(true);
   const [hoveredMarker, setHoveredMarker] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchMarkers();
-  }, [selectedCategory, selectedRegion]);
+  const { data, loading } = useApiList<MapMarker>(
+    '/api/map_markers',
+    [selectedCategory, selectedRegion],
+    () => ({
+      category: selectedCategory || undefined,
+      region: selectedRegion || undefined,
+    })
+  );
+  const markers = data ?? [];
 
-  async function fetchMarkers() {
-    setLoading(true);
-    const params = new URLSearchParams();
-    if (selectedCategory) params.set('category', selectedCategory);
-    if (selectedRegion) params.set('region', selectedRegion);
-    const res = await fetch(`/api/map_markers?${params.toString()}`);
-    if (res.ok) {
-      const data = await res.json();
-      setMarkers(data as MapMarker[]);
-    } else {
-      console.error('Failed to fetch map markers', await res.text());
-    }
-    setLoading(false);
-  }
+  // markers are provided by useApiList and update when selectedCategory/selectedRegion change
 
   const toggleCategory = (categoryId: string) => {
     const newVisible = new Set(visibleCategories);

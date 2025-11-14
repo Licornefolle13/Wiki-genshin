@@ -1,40 +1,32 @@
 import { useState, useEffect } from 'react';
-import { Artifact } from '../lib/supabase';
+import type { Artifact } from '../types';
+import useApiList from '../hooks/useApiList';
 import { Shield, Filter } from 'lucide-react';
 
 const PIECE_TYPES = ['Flower', 'Feather', 'Sands', 'Goblet', 'Circlet'];
 
 export default function ArtifactWiki() {
   // artifacts list not needed once grouped; keep only groupedArtifacts
-  const [loading, setLoading] = useState(true);
+
   const [selectedPiece, setSelectedPiece] = useState<string>('');
   const [groupedArtifacts, setGroupedArtifacts] = useState<Record<string, Artifact[]>>({});
   const [showFilters, setShowFilters] = useState(true);
 
-  useEffect(() => {
-    fetchArtifacts();
-  }, [selectedPiece]);
+  const { data, loading } = useApiList<Artifact>(
+    '/api/artifacts',
+    [selectedPiece],
+    () => ({ piece_type: selectedPiece || undefined })
+  );
 
-  async function fetchArtifacts() {
-    setLoading(true);
-    const params = new URLSearchParams();
-    if (selectedPiece) params.set('piece_type', selectedPiece);
-    const res = await fetch(`/api/artifacts?${params.toString()}`);
-    if (res.ok) {
-      const data = await res.json() as Artifact[];
-      const grouped = data.reduce((acc: Record<string, Artifact[]>, artifact: Artifact) => {
-        if (!acc[artifact.set_name]) {
-          acc[artifact.set_name] = [];
-        }
-        acc[artifact.set_name].push(artifact);
-        return acc;
-      }, {} as Record<string, Artifact[]>);
-      setGroupedArtifacts(grouped);
-    } else {
-      console.error('Failed to fetch artifacts', await res.text());
-    }
-    setLoading(false);
-  }
+  useEffect(() => {
+    const grouped: Record<string, Artifact[]> = {};
+    (data ?? []).forEach((artifact) => {
+      if (!grouped[artifact.set_name]) grouped[artifact.set_name] = [];
+      grouped[artifact.set_name].push(artifact);
+    });
+    setGroupedArtifacts(grouped);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data]);
 
   const clearFilters = () => {
     setSelectedPiece('');

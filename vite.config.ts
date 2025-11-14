@@ -1,7 +1,6 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
   optimizeDeps: {
@@ -14,8 +13,7 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
-      // forward static image requests to backend during development
-      '/genshin': {
+      '/images': {
         target: 'http://localhost:4000',
         changeOrigin: true,
         secure: false,

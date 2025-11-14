@@ -3,7 +3,6 @@ const path = require('path');
 const fs = require('fs').promises;
 const cors = require('cors');
 const dotenv = require('dotenv');
-const path = require('path');
 
 dotenv.config();
 
@@ -12,12 +11,12 @@ app.use(cors());
 app.use(express.json());
 
 // Serve static assets placed in backend/genshin (e.g. character card images)
-app.use('/genshin', express.static(path.join(__dirname, 'genshin')));
+app.use('/images/characters/', express.static(path.join(__dirname, 'images', 'characters')));
 
 // Dynamic image map endpoint
-app.get('/genshin/images.json', async (req, res, next) => {
+app.get('/images/images.json', async (req, res, next) => {
   try {
-    const dir = path.join(__dirname, 'genshin');
+    const dir = path.join(__dirname, 'images',);
     const files = await fs.readdir(dir);
     const map = {};
 
@@ -34,13 +33,13 @@ app.get('/genshin/images.json', async (req, res, next) => {
       // remove trailing _Card if present
       const nameBase = base.replace(/_Card$/i, '');
       const keyFull = sanitize(nameBase);
-      map[keyFull] = `/genshin/${file}`;
+      map[keyFull] = `/images/${file}`;
 
       // also map last token after underscore (e.g., Arataki_Itto -> Itto)
       const parts = nameBase.split(/[_\s]+/);
       if (parts.length > 1) {
         const keyLast = sanitize(parts[parts.length - 1]);
-        if (!map[keyLast]) map[keyLast] = `/genshin/${file}`;
+        if (!map[keyLast]) map[keyLast] = `/images/${file}`;
       }
     }
 
@@ -54,9 +53,8 @@ app.get('/genshin/images.json', async (req, res, next) => {
 const { requestLogger, errorLogger } = require('./middleware/logger');
 app.use(requestLogger);
 
-// serve static images from genshin folder
-const imagesPath = process.env.IMAGES_PATH || path.join(__dirname, '..', 'genshin');
-app.use('/images', express.static(imagesPath));
+// Note: images are served from `/genshin` (see above). The previous
+// duplicate `/images` static route has been removed to avoid confusion.
 
 // routes
 app.use('/api', require('./routes'));
