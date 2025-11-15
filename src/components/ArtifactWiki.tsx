@@ -11,6 +11,7 @@ export default function ArtifactWiki() {
   const [selectedPiece, setSelectedPiece] = useState<string>('');
   const [groupedArtifacts, setGroupedArtifacts] = useState<Record<string, Artifact[]>>({});
   const [showFilters, setShowFilters] = useState(true);
+  const [openPiece, setOpenPiece] = useState<Artifact | null>(null);
 
   const { data, loading } = useApiList<Artifact>(
     '/api/artifacts',
@@ -25,8 +26,16 @@ export default function ArtifactWiki() {
       grouped[artifact.set_name].push(artifact);
     });
     setGroupedArtifacts(grouped);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
+
+  // close modal on Escape
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpenPiece(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const clearFilters = () => {
     setSelectedPiece('');
@@ -126,16 +135,33 @@ export default function ArtifactWiki() {
                         {pieces.map((piece) => (
                           <div
                             key={piece.id}
-                            className="bg-slate-700/30 rounded-lg p-3 border border-slate-600 hover:border-amber-500 transition-colors text-center"
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => setOpenPiece(piece)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') setOpenPiece(piece); }}
+                            className="bg-slate-700/30 rounded-lg p-3 border border-slate-600 hover:border-amber-500 transition-colors text-center flex flex-col items-center cursor-pointer"
                           >
-                            <div className="text-3xl mb-2">
-                              {piece.piece_type === 'Flower' && '🌸'}
-                              {piece.piece_type === 'Feather' && '🪶'}
-                              {piece.piece_type === 'Sands' && '⏳'}
-                              {piece.piece_type === 'Goblet' && '🏺'}
-                              {piece.piece_type === 'Circlet' && '👑'}
+                            <div className="w-full h-28 mb-2 flex items-center justify-center bg-slate-800 rounded-md overflow-hidden">
+                              {piece.image_url ? (
+                                // show image (object-contain to preserve aspect)
+                                <img
+                                  src={piece.image_url}
+                                  alt={piece.piece_name || piece.piece_type}
+                                  className="max-h-full w-auto object-contain"
+                                  loading="lazy"
+                                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                                />
+                              ) : (
+                                <div className="text-3xl">
+                                  {piece.piece_type === 'Flower' && '🌸'}
+                                  {piece.piece_type === 'Feather' && '🪶'}
+                                  {piece.piece_type === 'Sands' && '⏳'}
+                                  {piece.piece_type === 'Goblet' && '🏺'}
+                                  {piece.piece_type === 'Circlet' && '👑'}
+                                </div>
+                              )}
                             </div>
-                            <p className="text-slate-300 text-sm font-medium">{piece.piece_type}</p>
+                            <p className="text-slate-300 text-sm font-medium">{piece.piece_name || piece.piece_type}</p>
                           </div>
                         ))}
                       </div>
@@ -144,6 +170,58 @@ export default function ArtifactWiki() {
                 </div>
               );
             })}
+          </div>
+        )}
+        {/* Piece details modal */}
+        {openPiece && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+            role="dialog"
+            aria-modal="true"
+            onClick={() => setOpenPiece(null)}
+          >
+            <div
+              className="max-w-3xl w-full mx-4 bg-slate-900 rounded-xl overflow-hidden shadow-2xl border border-slate-700"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-4 flex items-start gap-6">
+                <div className="w-1/3">
+                  {openPiece.image_url ? (
+                    <img
+                      src={openPiece.image_url}
+                      alt={openPiece.piece_name || openPiece.piece_type}
+                      className="w-full h-auto object-contain rounded-md bg-slate-800"
+                    />
+                  ) : (
+                    <div className="w-full h-40 flex items-center justify-center bg-slate-800 rounded-md text-4xl">{openPiece.piece_type === 'Flower' ? '🌸' : openPiece.piece_type === 'Feather' ? '🪶' : openPiece.piece_type === 'Sands' ? '⏳' : openPiece.piece_type === 'Goblet' ? '🏺' : '👑'}</div>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="text-2xl font-bold text-white">{openPiece.piece_name || openPiece.piece_type}</h3>
+                      <p className="text-slate-300 text-sm">{openPiece.piece_type} • {openPiece.set_name}</p>
+                    </div>
+                    <button
+                      onClick={() => setOpenPiece(null)}
+                      className="ml-4 text-slate-400 hover:text-white bg-slate-800 rounded-md px-3 py-1"
+                      aria-label="Close"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  <div className="mt-4 text-slate-300">
+                    <p className="mb-3">{openPiece.description || 'No description available.'}</p>
+                    <div className="mt-4">
+                      <h4 className="text-amber-400 font-semibold">Set Bonuses</h4>
+                      <p className="text-slate-300 text-sm">2-piece: {openPiece.two_piece_bonus || '—'}</p>
+                      <p className="text-slate-300 text-sm">4-piece: {openPiece.four_piece_bonus || '—'}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>

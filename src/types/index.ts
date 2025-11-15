@@ -1,3 +1,5 @@
+
+
 export type View = 'characters' | 'weapons' | 'artifacts' | 'map';
 
 export interface FilterState {
@@ -8,48 +10,39 @@ export interface FilterState {
 }
 
 export interface Character {
-  id: string;
+  id: number;
   name: string;
   rarity: number;
   element: string;
   weapon_type: string;
-  region: string;
-  description: string;
-  image_url: string;
-  created_at: string;
+  region?: string | null;
+  description?: string | null;
+  image_url?: string | null;
+  created_at?: string | null;
 }
 
 export interface Weapon {
-  id: string;
+  id: number;
   name: string;
   weapon_type: string;
   rarity: number;
-  base_attack: number;
-  secondary_stat: string;
-  description: string;
-  image_url: string;
-  created_at: string;
+  base_attack?: number | null;
+  secondary_stat?: string | null;
+  description?: string | null;
+  image_url?: string | null;
+  created_at?: string | null;
 }
 
 export interface Artifact {
-  id: string;
+  id: number;
   set_name: string;
   piece_type: string;
-  two_piece_bonus: string;
-  four_piece_bonus: string;
-  description: string;
-  image_url: string;
-  created_at: string;
-}
-
-export interface MapMarker {
-  id: string;
-  name: string;
-  category: string;
-  region: string;
-  lat: number;
-  lng: number;
-  description: string;
-  icon_type: string;
-  created_at: string;
+  piece_name?: string | null;
+  set_id?: number | null;
+  rarity?: string | number | null;
+  two_piece_bonus?: string | null;
+  four_piece_bonus?: string | null;
+  description?: string | null;
+  image_url?: string | null;
+  created_at?: string | null;
 }

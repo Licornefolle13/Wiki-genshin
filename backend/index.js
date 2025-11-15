@@ -12,6 +12,7 @@ app.use(express.json());
 
 // Serve static assets placed in backend/genshin (e.g. character card images)
 app.use('/images/characters/', express.static(path.join(__dirname, 'images', 'characters')));
+app.use('/images/artifacts/', express.static(path.join(__dirname, 'images', 'artifacts')));
 
 // Dynamic image map endpoint
 app.get('/images/images.json', async (req, res, next) => {
