@@ -2,16 +2,18 @@ import { useState, useEffect } from 'react';
 import type { Artifact } from '../types';
 import useApiList from '../hooks/useApiList';
 import { Shield, Filter } from 'lucide-react';
+import SearchBar from './SearchBar';
 
 const PIECE_TYPES = ['Flower', 'Feather', 'Sands', 'Goblet', 'Circlet'];
 
 export default function ArtifactWiki() {
-  // artifacts list not needed once grouped; keep only groupedArtifacts
 
   const [selectedPiece, setSelectedPiece] = useState<string>('');
+  const [selectedSet, setSelectedSet] = useState<string>('');
   const [groupedArtifacts, setGroupedArtifacts] = useState<Record<string, Artifact[]>>({});
   const [showFilters, setShowFilters] = useState(true);
   const [openPiece, setOpenPiece] = useState<Artifact | null>(null);
+  const [search, setSearch] = useState('');
 
   const { data, loading } = useApiList<Artifact>(
     '/api/artifacts',
@@ -26,6 +28,10 @@ export default function ArtifactWiki() {
       grouped[artifact.set_name].push(artifact);
     });
     setGroupedArtifacts(grouped);
+    // If the selected set no longer exists in results, clear it
+    if (selectedSet && !(grouped[selectedSet])) {
+      setSelectedSet('');
+    }
   }, [data]);
 
   // close modal on Escape
@@ -39,7 +45,23 @@ export default function ArtifactWiki() {
 
   const clearFilters = () => {
     setSelectedPiece('');
+    setSearch('');
   };
+
+  // compute filtered grouped artifacts based on search and selectedSet
+  const filteredGroupedEntries = Object.entries(groupedArtifacts)
+    .filter(([setName]) => (selectedSet ? setName === selectedSet : true))
+    .map(([setName, pieces]) => {
+      if (!search) return [setName, pieces] as [string, Artifact[]];
+      const s = search.toLowerCase();
+      const matched = pieces.filter((p) => (
+        (p.piece_name || p.piece_type || '').toString().toLowerCase().includes(s) ||
+        (p.set_name || '').toLowerCase().includes(s) ||
+        (p.piece_type || '').toLowerCase().includes(s)
+      ));
+      return [setName, matched] as [string, Artifact[]];
+    })
+    .filter(([, pieces]) => pieces.length > 0);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
@@ -66,22 +88,42 @@ export default function ArtifactWiki() {
             </div>
           </div>
           <div className={`${showFilters ? 'block' : 'hidden'} md:block bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 shadow-2xl border border-slate-700`}>
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">Piece Type</label>
-              <select
-                value={selectedPiece}
-                onChange={(e) => setSelectedPiece(e.target.value)}
-                className="w-full md:w-1/3 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-              >
-                <option value="">All Pieces</option>
-                {PIECE_TYPES.map((piece) => (
-                  <option key={piece} value={piece}>
-                    {piece}
-                  </option>
-                ))}
-              </select>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Piece Type</label>
+                <select
+                  value={selectedPiece}
+                  onChange={(e) => setSelectedPiece(e.target.value)}
+                  className="w-full md:w-2/3 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                >
+                  <option value="">All Pieces</option>
+                  {PIECE_TYPES.map((piece) => (
+                    <option key={piece} value={piece}>
+                      {piece}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Set</label>
+                <select
+                  value={selectedSet}
+                  onChange={(e) => setSelectedSet(e.target.value)}
+                  className="w-full md:w-2/3 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                >
+                  <option value="">All Sets</option>
+                  {Object.keys(groupedArtifacts).sort().map((setName) => (
+                    <option key={setName} value={setName}>{setName}</option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
+        </div>
+
+        <div>
+          <SearchBar value={search} onChange={setSearch} placeholder="Search sets or pieces..." />
         </div>
 
         {loading ? (
@@ -89,13 +131,13 @@ export default function ArtifactWiki() {
             <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-amber-400 border-r-transparent"></div>
             <p className="mt-4 text-slate-300">Loading artifacts...</p>
           </div>
-        ) : Object.keys(groupedArtifacts).length === 0 ? (
+        ) : filteredGroupedEntries.length === 0 ? (
           <div className="text-center py-12 bg-slate-800/50 rounded-xl border border-slate-700">
             <p className="text-slate-300 text-lg">No artifacts found. Try adjusting your filters.</p>
           </div>
         ) : (
           <div className="space-y-6">
-            {Object.entries(groupedArtifacts).map(([setName, pieces]) => {
+            {filteredGroupedEntries.map(([setName, pieces]) => {
               const firstPiece = pieces[0];
               return (
                 <div

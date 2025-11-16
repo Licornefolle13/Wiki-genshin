@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import type { Character } from '../types';
 import useApiList from '../hooks/useApiList';
 import { Filter, Star } from 'lucide-react';
+import SearchBar from './SearchBar';
 
 const ELEMENTS = ['Pyro', 'Hydro', 'Anemo', 'Electro', 'Dendro', 'Cryo', 'Geo'];
 const WEAPON_TYPES = ['Sword', 'Claymore', 'Polearm', 'Bow', 'Catalyst'];
@@ -36,10 +37,20 @@ export default function CharacterWiki() {
     })
   );
   const characters = data ?? [];
+  const [search, setSearch] = useState('');
 
-  // Data comes from useApiList; it automatically refreshes when the
-  // dependency array [selectedElement, selectedWeapon, selectedRegion, selectedRarity]
-  // changes.
+  const filteredCharacters = characters.filter((c) => {
+    if (!search) return true;
+    const s = search.toLowerCase();
+    return (
+      c.name.toLowerCase().includes(s) ||
+      (c.element || '').toLowerCase().includes(s) ||
+      (c.weapon_type || '').toLowerCase().includes(s) ||
+      (c.region || '').toString().toLowerCase().includes(s)
+    );
+  });
+
+
 
   const clearFilters = () => {
     setSelectedElement('');
@@ -48,7 +59,6 @@ export default function CharacterWiki() {
     setSelectedRarity(null);
   };
 
-  // selectedCharacter modal shown when a card is clicked
   const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null);
 
   useEffect(() => {
@@ -59,7 +69,6 @@ export default function CharacterWiki() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  // sanitization helper removed; using image_url only for now
 
 
 
@@ -153,18 +162,22 @@ export default function CharacterWiki() {
           </div>
         </div>
 
+        <div>
+          <SearchBar value={search} onChange={setSearch} placeholder="Search characters by name, element or weapon..." />
+        </div>
+
         {loading ? (
           <div className="text-center py-12">
             <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-amber-400 border-r-transparent"></div>
             <p className="mt-4 text-slate-300">Loading characters...</p>
           </div>
-        ) : characters.length === 0 ? (
+        ) : filteredCharacters.length === 0 ? (
           <div className="text-center py-12 bg-slate-800/50 rounded-xl border border-slate-700">
-            <p className="text-slate-300 text-lg">No characters found. Try adjusting your filters.</p>
+            <p className="text-slate-300 text-lg">No characters found. Try adjusting your filters or search.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {characters.map((character) => (
+            {filteredCharacters.map((character) => (
               <div
                 key={character.id}
                 role="button"

@@ -24,7 +24,7 @@ export interface Character {
 export interface Weapon {
   id: number;
   name: string;
-  weapon_type: string;
+  type: string;
   rarity: number;
   base_attack?: number | null;
   secondary_stat?: string | null;

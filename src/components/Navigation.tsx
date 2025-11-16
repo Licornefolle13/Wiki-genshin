@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { View } from '../types';
 import { Sword, Users, Shield, Map, Menu, X } from 'lucide-react';
 
-// External map URL used by the header link. Update as needed.
 const EXTERNAL_MAP_URL = 'https://genshin-impact-map.appsample.com/';
 
 interface NavigationProps {
