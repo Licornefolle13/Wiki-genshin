@@ -1,42 +1,59 @@
-import { useState, useEffect } from 'react';
-import { Weapon } from '../lib/supabase';
+import { useState } from 'react';
+import type { Weapon } from '../types';
+import useApiList from '../hooks/useApiList';
 import { Sword, Filter, Star } from 'lucide-react';
+import SearchBar from './SearchBar';
+import WeaponModal from './WeaponModal';
 
 const WEAPON_TYPES = ['Sword', 'Claymore', 'Polearm', 'Bow', 'Catalyst'];
+const WEAPON_RARITY = [1, 2, 3, 4, 5];
 
-const TYPE_COLORS: Record<string, string> = {
-  Sword: 'from-blue-500 to-cyan-500',
-  Claymore: 'from-orange-500 to-red-500',
-  Polearm: 'from-purple-500 to-pink-500',
-  Bow: 'from-green-500 to-emerald-500',
-  Catalyst: 'from-violet-500 to-purple-500',
+const RARITY_COLORS: Record<number, string> = {
+  1: 'from-slate-500 to-slate-500',
+  2: 'from-green-500 to-lime-500',
+  3: 'from-blue-500 to-cyan-500',
+  4: 'from-purple-500 to-violet-500',
+  5: 'from-orange-500 to-red-500',
 };
 
 export default function WeaponWiki() {
-  const [weapons, setWeapons] = useState<Weapon[]>([]);
-  const [loading, setLoading] = useState(true);
+
   const [selectedType, setSelectedType] = useState<string>('');
   const [selectedRarity, setSelectedRarity] = useState<number | null>(null);
   const [showFilters, setShowFilters] = useState(true);
 
-  useEffect(() => {
-    fetchWeapons();
-  }, [selectedType, selectedRarity]);
+  const { data, loading } = useApiList<Weapon>(
+    '/api/weapons',
+    [selectedType, selectedRarity],
+    () => ({
+      type: selectedType || undefined,
+      rarity: selectedRarity != null ? String(selectedRarity) : undefined,
+    })
+  );
+  const weapons = data ?? [];
+  const [search, setSearch] = useState('');
+  const [selectedWeapon, setSelectedWeapon] = useState<Weapon | null>(null);
 
-  async function fetchWeapons() {
-    setLoading(true);
-    const params = new URLSearchParams();
-    if (selectedType) params.set('weapon_type', selectedType);
-    if (selectedRarity) params.set('rarity', String(selectedRarity));
-    const res = await fetch(`/api/weapons?${params.toString()}`);
-    if (res.ok) {
-      const data = await res.json();
-      setWeapons(data as Weapon[]);
-    } else {
-      console.error('Failed to fetch weapons', await res.text());
+  const filteredWeapons = weapons.filter((w) => {
+    // Apply selected type filter (case-insensitive)
+    if (selectedType && (w.type || '').toLowerCase() !== selectedType.toLowerCase()) {
+      return false;
     }
-    setLoading(false);
-  }
+
+    // Apply selected rarity filter
+    if (selectedRarity != null && w.rarity !== selectedRarity) {
+      return false;
+    }
+
+    // Apply search text (if any)
+    if (!search) return true;
+    const s = search.toLowerCase();
+    return (
+      w.name.toLowerCase().includes(s) ||
+      (w.type || '').toLowerCase().includes(s) ||
+      (w.secondary_stat || '').toString().toLowerCase().includes(s)
+    );
+  });
 
   const clearFilters = () => {
     setSelectedType('');
@@ -93,13 +110,19 @@ export default function WeaponWiki() {
                   className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
                 >
                   <option value="">All Rarities</option>
-                  <option value="3">3 Star</option>
-                  <option value="4">4 Star</option>
-                  <option value="5">5 Star</option>
+                  {WEAPON_RARITY.filter((r) => r >= 3).map((r) => (
+                    <option key={r} value={String(r)}>
+                      {r} Star
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
           </div>
+        </div>
+
+        <div>
+          <SearchBar value={search} onChange={setSearch} placeholder="Search weapons by name or stat..." />
         </div>
 
         {loading ? (
@@ -107,50 +130,69 @@ export default function WeaponWiki() {
             <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-amber-400 border-r-transparent"></div>
             <p className="mt-4 text-slate-300">Loading weapons...</p>
           </div>
-        ) : weapons.length === 0 ? (
+        ) : filteredWeapons.length === 0 ? (
           <div className="text-center py-12 bg-slate-800/50 rounded-xl border border-slate-700">
             <p className="text-slate-300 text-lg">No weapons found. Try adjusting your filters.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {weapons.map((weapon) => (
-              <div
-                key={weapon.id}
-                className="group bg-slate-800/80 backdrop-blur-sm rounded-xl overflow-hidden shadow-lg border border-slate-700 hover:border-amber-500 transition-all duration-300 hover:shadow-2xl hover:shadow-amber-500/20 hover:-translate-y-1"
-              >
-                <div className={`h-48 bg-gradient-to-br ${TYPE_COLORS[weapon.weapon_type] || 'from-slate-600 to-slate-700'} flex items-center justify-center relative overflow-hidden`}>
-                  {weapon.image_url ? (
-                    <img src={weapon.image_url} alt={weapon.name} className="h-full w-full object-cover" />
-                  ) : (
-                    <Sword size={64} className="text-white/30" />
-                  )}
-                  <div className="absolute top-2 right-2 flex">
-                    {Array.from({ length: weapon.rarity }).map((_, i) => (
-                      <Star key={i} size={16} className="fill-amber-400 text-amber-400" />
-                    ))}
+            {filteredWeapons.map((weapon) => {
+              const sanitizeForFilename = (name: string) =>
+                name
+                  .replace(/[^\w\s'\-]/g, '')
+                  .replace(/\s+/g, '_');
+
+              const imgSrc =
+                weapon.image_url && weapon.image_url !== ''
+                  ? weapon.image_url
+                  : `/images/weapons/Weapon_${sanitizeForFilename(weapon.name)}.png`;
+
+              return (
+                <div
+                  key={weapon.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setSelectedWeapon(weapon)}
+                  onKeyDown={(e) => e.key === 'Enter' && setSelectedWeapon(weapon)}
+                  className="cursor-pointer group bg-slate-800/80 backdrop-blur-sm rounded-xl overflow-hidden shadow-lg border border-slate-700 hover:border-amber-500 transition-all duration-300 hover:shadow-2xl hover:shadow-amber-500/20 hover:-translate-y-1"
+                >
+                  <div className={`h-25 w-25 bg-gradient-to-br ${RARITY_COLORS[weapon.rarity] || 'from-slate-600 to-slate-700'} flex items-center justify-center relative overflow-hidden`}>
+                    {imgSrc ? (
+                      <img src={imgSrc} alt={weapon.name} className="h-50 w-50 object-cover" />
+                    ) : (
+                      <Sword size={64} className="text-white/30" />
+                    )}
+                    <div className="absolute top-2 right-2 flex">
+                      {Array.from({ length: weapon.rarity }).map((_, i) => (
+                        <Star key={i} size={16} className="fill-amber-400 text-amber-400" />
+                      ))}
+                    </div>
                   </div>
-                </div>
-                <div className="p-4">
-                  <h3 className="text-xl font-bold text-white mb-2">{weapon.name}</h3>
-                  <div className="space-y-1 text-sm">
-                    <p className="text-slate-300">
-                      <span className="font-medium text-amber-400">Type:</span> {weapon.weapon_type}
-                    </p>
-                    <p className="text-slate-300">
-                      <span className="font-medium text-amber-400">Base ATK:</span> {weapon.base_attack}
-                    </p>
-                    {weapon.secondary_stat && (
+                  <div className="p-4">
+                    <h3 className="text-xl font-bold text-white mb-2">{weapon.name}</h3>
+                    <div className="space-y-1 text-sm">
                       <p className="text-slate-300">
-                        <span className="font-medium text-amber-400">Stat:</span> {weapon.secondary_stat}
+                        <span className="font-medium text-amber-400">Type:</span> {weapon.type}
                       </p>
+                      <p className="text-slate-300">
+                        <span className="font-medium text-amber-400">Base ATK:</span> {weapon.base_attack}
+                      </p>
+                      {weapon.secondary_stat && (
+                        <p className="text-slate-300">
+                          <span className="font-medium text-amber-400">Stat:</span> {weapon.secondary_stat}
+                        </p>
+                      )}
+                    </div>
+                    {weapon.description && (
+                      <p className="mt-3 text-slate-400 text-sm line-clamp-3">{weapon.description}</p>
                     )}
                   </div>
-                  {weapon.description && (
-                    <p className="mt-3 text-slate-400 text-sm line-clamp-3">{weapon.description}</p>
-                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
+            {selectedWeapon && (
+              <WeaponModal weapon={selectedWeapon} onClose={() => setSelectedWeapon(null)} />
+            )}
           </div>
         )}
       </div>

@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { View } from '../types';
 import { Sword, Users, Shield, Map, Menu, X } from 'lucide-react';
 
+const EXTERNAL_MAP_URL = 'https://genshin-impact-map.appsample.com/';
+
 interface NavigationProps {
   currentView: View;
   onViewChange: (view: View) => void;
@@ -29,17 +31,30 @@ export default function Navigation({ currentView, onViewChange }: NavigationProp
           {/* Desktop menu */}
           <div className="hidden md:flex space-x-1">
             {navItems.map((item) => (
-              <button
-                key={item.view}
-                onClick={() => onViewChange(item.view)}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 ${currentView === item.view
+              item.view === 'map' ? (
+                <a
+                  key={item.view}
+                  href={EXTERNAL_MAP_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 text-slate-300 hover:text-white hover:bg-slate-700/50`}
+                >
+                  {item.icon}
+                  <span>{item.label}</span>
+                </a>
+              ) : (
+                <button
+                  key={item.view}
+                  onClick={() => onViewChange(item.view)}
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 ${currentView === item.view
                     ? 'bg-amber-500 text-slate-900 shadow-lg shadow-amber-500/50'
                     : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
-                  }`}
-              >
-                {item.icon}
-                <span>{item.label}</span>
-              </button>
+                    }`}
+                >
+                  {item.icon}
+                  <span>{item.label}</span>
+                </button>
+              )
             ))}
           </div>
 
@@ -60,20 +75,34 @@ export default function Navigation({ currentView, onViewChange }: NavigationProp
       <div className={`md:hidden ${mobileOpen ? 'block' : 'hidden'} px-4 pb-4`}>
         <div className="space-y-2">
           {navItems.map((item) => (
-            <button
-              key={item.view}
-              onClick={() => {
-                onViewChange(item.view);
-                setMobileOpen(false);
-              }}
-              className={`w-full text-left flex items-center space-x-3 px-4 py-2 rounded-lg font-medium transition-all duration-150 ${currentView === item.view
+            item.view === 'map' ? (
+              <a
+                key={item.view}
+                href={EXTERNAL_MAP_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setMobileOpen(false)}
+                className={`w-full text-left flex items-center space-x-3 px-4 py-2 rounded-lg font-medium transition-all duration-150 text-slate-300 hover:text-white hover:bg-slate-700/50`}
+              >
+                {item.icon}
+                <span>{item.label}</span>
+              </a>
+            ) : (
+              <button
+                key={item.view}
+                onClick={() => {
+                  onViewChange(item.view);
+                  setMobileOpen(false);
+                }}
+                className={`w-full text-left flex items-center space-x-3 px-4 py-2 rounded-lg font-medium transition-all duration-150 ${currentView === item.view
                   ? 'bg-amber-500 text-slate-900'
                   : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
-                }`}
-            >
-              {item.icon}
-              <span>{item.label}</span>
-            </button>
+                  }`}
+              >
+                {item.icon}
+                <span>{item.label}</span>
+              </button>
+            )
           ))}
         </div>
       </div>
